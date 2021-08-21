@@ -1,7 +1,5 @@
-use crate::{
-    config::{get_configuration, JwkConfiguration},
-    fetch_keys::JwkKey,
-};
+use crate::fetch_keys::JwkKey;
+use crate::jwk_auth::JwkConfiguration;
 use jsonwebtoken::decode_header;
 use jsonwebtoken::TokenData;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
@@ -43,11 +41,8 @@ fn keys_to_map(keys: Vec<JwkKey>) -> HashMap<String, JwkKey> {
 }
 
 impl JwkVerifier {
-    pub fn new() -> JwkVerifier {
-        JwkVerifier {
-            keys: None,
-            config: get_configuration(),
-        }
+    pub fn new(config: JwkConfiguration) -> JwkVerifier {
+        JwkVerifier { keys: None, config }
     }
 
     pub fn verify(&self, token: &String) -> Option<TokenData<Claims>> {

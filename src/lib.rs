@@ -1,4 +1,3 @@
-mod config;
 mod fetch_keys;
 mod get_max_age;
 mod jwk_auth;

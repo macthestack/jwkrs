@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::error::Error;
 use std::time::Duration;
 
-use crate::{config::{JwkConfiguration, get_configuration}, get_max_age::get_max_age};
+use crate::{get_max_age::get_max_age, jwk_auth::JwkConfiguration};
 
 #[derive(Debug, Deserialize)]
 struct KeyResponse {
@@ -25,10 +25,8 @@ pub struct JwkKeys {
 
 const FALLBACK_TIMEOUT: Duration = Duration::from_secs(60);
 
-pub async fn get_keys(
-    config: &JwkConfiguration,
-) -> Result<JwkKeys, Box<dyn std::error::Error>> {
-    let http_response = reqwest::get(&config.jwk_url).await?;
+pub async fn get_keys(config: &JwkConfiguration) -> Result<JwkKeys, Box<dyn std::error::Error>> {
+    let http_response = reqwest::get(&config.url).await?;
     let max_age = get_max_age(&http_response).unwrap_or(FALLBACK_TIMEOUT);
     let result = Result::Ok(http_response.json::<KeyResponse>().await?);
 
@@ -38,6 +36,6 @@ pub async fn get_keys(
     });
 }
 
-pub async fn fetch_keys() -> Result<JwkKeys, Box<dyn Error>> {
-    return get_keys(&get_configuration()).await;
+pub async fn fetch_keys(config: &JwkConfiguration) -> Result<JwkKeys, Box<dyn Error>> {
+    return get_keys(config).await;
 }

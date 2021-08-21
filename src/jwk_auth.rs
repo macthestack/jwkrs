@@ -9,19 +9,31 @@ use crate::{
 };
 #[derive(Clone)]
 pub struct JwkAuth {
+    config: JwkConfiguration,
     verifier: Arc<RwLock<JwkVerifier>>,
 }
 
-impl JwkAuth {
-    pub async fn new() -> JwkAuth {
-        let verifier = Arc::new(RwLock::new(JwkVerifier::new()));
+#[derive(Clone, Debug)]
+pub struct JwkConfiguration {
+    pub url: String,
+    pub audience: String,
+    pub issuer: String,
+}
 
-        let mut instance = JwkAuth { verifier };
+impl JwkAuth {
+    pub async fn new(url: String, audience: String, issuer: String) -> JwkAuth {
+        let config = JwkConfiguration {
+            url,
+            audience,
+            issuer,
+        };
+        let verifier = Arc::new(RwLock::new(JwkVerifier::new(config.clone())));
+
+        let mut instance = JwkAuth { verifier, config };
 
         instance.start_key_update();
         instance
     }
-
     pub async fn verify(&self, token: &String) -> Option<TokenData<Claims>> {
         let verifier = self.verifier.read().await;
         verifier.verify(token)
@@ -29,10 +41,10 @@ impl JwkAuth {
 
     fn start_key_update(&mut self) {
         let verifier_ref = Arc::clone(&self.verifier);
-
+        let config = self.config.clone();
         tokio::spawn(async move {
             loop {
-                let keys_o = fetch_keys().await.ok();
+                let keys_o = fetch_keys(&config).await.ok();
 
                 match keys_o {
                     Some(keys) => {
@@ -40,7 +52,7 @@ impl JwkAuth {
                             let mut verifier = verifier_ref.write().await;
                             verifier.set_keys(keys.keys);
                         } // Drop write lock.
-                        
+
                         sleep(keys.validity).await
                     }
                     None => {
