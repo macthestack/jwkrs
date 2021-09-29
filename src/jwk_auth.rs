@@ -47,12 +47,12 @@ impl JwkAuth {
     }
 }
 
-async fn key_update<'a>(config: JwkConfiguration, mut w: WriteHandle<String, JwkKey>) {
+async fn key_update(config: JwkConfiguration, mut w: WriteHandle<String, JwkKey>) {
     loop {
         let keys = get_keys(&config).await;
         let duration = match keys {
             Ok((keys, duration)) => {
-                println!("Duration: {:?}", duration);
+                w.purge();
                 for k in keys {
                     w.update(k.kid.clone(), k);
                 }
