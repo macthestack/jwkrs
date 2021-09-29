@@ -1,5 +1,7 @@
 # jwkrs
 
+[![Crates.io](https://img.shields.io/crates/v/jwkrs)](https://crates.io/crates/jwkrs)
+
 ![jwkrs](https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/joker-1570104122.png?crop=1.00xw:1.00xh;0,0&resize=980:*)
 
 Early prototype of a JWK authentication library.
