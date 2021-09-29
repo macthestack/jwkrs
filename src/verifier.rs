@@ -34,17 +34,17 @@ pub struct JwkVerifier<'a> {
 
 impl<'a> JwkVerifier<'a> {
     pub fn verify(&self, token: &String) -> Option<TokenData<Claims>> {
-        let token_kid = decode_header(token).map(|header| header.kid).ok()??;
+        let key_id = decode_header(token).map(|header| header.kid).ok()??;
 
-        let jwk_key = self.get_key(token_kid)?;
+        let key = self.get_key(key_id)?;
 
-        self.decode_token_with_key(&jwk_key, token).ok()
+        self.decode_token_with_key(&key, token).ok()
     }
 
     fn get_key(&self, key_id: String) -> Option<JwkKey> {
-        let r = self.keys.handle();
-        let a = r.get_one(&key_id)?;
-        Some(a.clone())
+        let key = self.keys.handle();
+        let key = key.get_one(&key_id)?;
+        Some(key.clone())
     }
 
     fn decode_token_with_key(
