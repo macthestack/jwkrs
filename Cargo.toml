@@ -1,13 +1,18 @@
 [package]
 name = "jwkrs"
 version = "0.1.0"
-authors = ["Martin Svensson <hetast@gmail.com>"]
+authors = ["Martin Svensson <martin@appscifi.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = { version = "1.0.125", features = ["derive"] }
-reqwest = { version = "0.11.3", default-features = false, features = ["json", "rustls-tls"] }
-jsonwebtoken = "7.2.0"
-tokio = { version = "1.5.0", features = ["sync"] }
+serde = { version = "1", features = ["derive"] }
+reqwest = { version = "0.11", default-features = false, features = [
+    "json",
+    "rustls-tls",
+] }
+jsonwebtoken = "7.2"
+tokio = { version = "1" }
+evmap = "10"
+evmap-derive = "0.2"

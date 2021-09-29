@@ -1,10 +1,10 @@
-use crate::fetch_keys::JwkKey;
-use crate::jwk_auth::JwkConfiguration;
+use crate::config::JwkConfiguration;
+use crate::jwk_auth::JwkKey;
+use evmap::ReadHandleFactory;
 use jsonwebtoken::decode_header;
 use jsonwebtoken::TokenData;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::str::FromStr;
 
 #[derive(Debug, Deserialize)]
@@ -27,48 +27,24 @@ enum VerificationError {
 }
 
 #[derive(Debug)]
-pub struct JwkVerifier {
-    keys: Option<HashMap<String, JwkKey>>,
-    config: JwkConfiguration,
+pub struct JwkVerifier<'a> {
+    pub keys: &'a ReadHandleFactory<String, JwkKey>,
+    pub config: &'a JwkConfiguration,
 }
 
-fn keys_to_map(keys: Vec<JwkKey>) -> HashMap<String, JwkKey> {
-    let mut keys_as_map = HashMap::new();
-    for key in keys {
-        keys_as_map.insert(String::clone(&key.kid), key);
-    }
-    keys_as_map
-}
-
-impl JwkVerifier {
-    pub fn new(config: JwkConfiguration) -> JwkVerifier {
-        JwkVerifier { keys: None, config }
-    }
-
+impl<'a> JwkVerifier<'a> {
     pub fn verify(&self, token: &String) -> Option<TokenData<Claims>> {
-        let token_kid = match decode_header(token).map(|header| header.kid) {
-            Ok(Some(kid)) => kid,
-            _ => return None,
-        };
+        let token_kid = decode_header(token).map(|header| header.kid).ok()??;
 
-        let jwk_key = match self.get_key(token_kid) {
-            Some(key) => key,
-            _ => return None,
-        };
+        let jwk_key = self.get_key(token_kid)?;
 
-        match self.decode_token_with_key(jwk_key, token) {
-            Ok(token_data) => Some(token_data),
-            _ => None,
-        }
+        self.decode_token_with_key(&jwk_key, token).ok()
     }
 
-    pub fn set_keys(&mut self, keys: Vec<JwkKey>) {
-        self.keys = Some(keys_to_map(keys));
-    }
-
-    fn get_key(&self, key_id: String) -> Option<&JwkKey> {
-        let k = self.keys.as_ref().expect("Keys not initialized.");
-        k.get(&key_id)
+    fn get_key(&self, key_id: String) -> Option<JwkKey> {
+        let r = self.keys.handle();
+        let a = r.get_one(&key_id)?;
+        Some(a.clone())
     }
 
     fn decode_token_with_key(

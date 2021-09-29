@@ -1,66 +1,66 @@
+use crate::config::JwkConfiguration;
+use crate::fetch_keys::get_keys;
+use crate::verifier::{Claims, JwkVerifier};
+use evmap::{ReadHandleFactory, WriteHandle};
+use evmap_derive::ShallowCopy;
 use jsonwebtoken::TokenData;
-use std::sync::Arc;
+use serde::Deserialize;
 use std::time::Duration;
-use tokio::{sync::RwLock, time::sleep};
+use tokio::time::sleep;
 
-use crate::{
-    fetch_keys::fetch_keys,
-    verifier::{Claims, JwkVerifier},
-};
 #[derive(Clone)]
 pub struct JwkAuth {
+    keys: ReadHandleFactory<String, JwkKey>,
     config: JwkConfiguration,
-    verifier: Arc<RwLock<JwkVerifier>>,
 }
 
-#[derive(Clone, Debug)]
-pub struct JwkConfiguration {
-    pub url: String,
-    pub audience: String,
-    pub issuer: String,
+#[derive(Clone, Default, Debug, Deserialize, Eq, PartialEq, Hash, ShallowCopy)]
+pub struct JwkKey {
+    pub e: String,
+    pub alg: String,
+    pub kty: String,
+    pub kid: String,
+    pub n: String,
 }
 
 impl JwkAuth {
-    pub async fn new(url: String, audience: String, issuer: String) -> JwkAuth {
-        let config = JwkConfiguration {
-            url,
-            audience,
-            issuer,
+    pub fn new(config: JwkConfiguration) -> JwkAuth {
+        let (r, w) = evmap::new();
+
+        let instance = JwkAuth {
+            keys: r.factory(),
+            config: config.clone(),
         };
-        let verifier = Arc::new(RwLock::new(JwkVerifier::new(config.clone())));
 
-        let mut instance = JwkAuth { verifier, config };
+        tokio::spawn(key_update(config, w));
 
-        instance.start_key_update();
         instance
     }
-    pub async fn verify(&self, token: &String) -> Option<TokenData<Claims>> {
-        let verifier = self.verifier.read().await;
+
+    pub async fn verify(self, token: &String) -> Option<TokenData<Claims>> {
+        let verifier = JwkVerifier {
+            keys: &self.keys,
+            config: &self.config,
+        };
+
         verifier.verify(token)
     }
+}
 
-    fn start_key_update(&mut self) {
-        let verifier_ref = Arc::clone(&self.verifier);
-        let config = self.config.clone();
-        tokio::spawn(async move {
-            loop {
-                let keys_o = fetch_keys(&config).await.ok();
-
-                match keys_o {
-                    Some(keys) => {
-                        {
-                            let mut verifier = verifier_ref.write().await;
-                            verifier.set_keys(keys.keys);
-                        } // Drop write lock.
-
-                        sleep(keys.validity).await
-                    }
-                    None => {
-                        eprintln!("Couldn't fetch jwk.");
-                        sleep(Duration::from_secs(10)).await;
-                    }
+async fn key_update<'a>(config: JwkConfiguration, mut w: WriteHandle<String, JwkKey>) {
+    loop {
+        let keys = get_keys(&config).await;
+        let duration = match keys {
+            Ok((keys, duration)) => {
+                println!("Duration: {:?}", duration);
+                for k in keys {
+                    w.update(k.kid.clone(), k);
                 }
+                w.refresh();
+                duration
             }
-        });
+            Err(_) => Duration::from_secs(10),
+        };
+        sleep(duration).await;
     }
 }

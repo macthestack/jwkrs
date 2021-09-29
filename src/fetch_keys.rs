@@ -1,41 +1,21 @@
 use serde::Deserialize;
-use std::error::Error;
 use std::time::Duration;
 
-use crate::{get_max_age::get_max_age, jwk_auth::JwkConfiguration};
+use crate::config::JwkConfiguration;
+use crate::get_max_age::get_max_age;
+use crate::jwk_auth::JwkKey;
 
 #[derive(Debug, Deserialize)]
 struct KeyResponse {
     keys: Vec<JwkKey>,
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq)]
-pub struct JwkKey {
-    pub e: String,
-    pub alg: String,
-    pub kty: String,
-    pub kid: String,
-    pub n: String,
-}
-
-pub struct JwkKeys {
-    pub keys: Vec<JwkKey>,
-    pub validity: Duration,
-}
-
 const FALLBACK_TIMEOUT: Duration = Duration::from_secs(60);
 
-pub async fn get_keys(config: &JwkConfiguration) -> Result<JwkKeys, Box<dyn std::error::Error>> {
-    let http_response = reqwest::get(&config.url).await?;
+pub async fn get_keys(config: &JwkConfiguration) -> Result<(Vec<JwkKey>, Duration), ()> {
+    let http_response = reqwest::get(config.jwk_url.clone()).await.map_err(|_| ())?;
     let max_age = get_max_age(&http_response).unwrap_or(FALLBACK_TIMEOUT);
-    let result = Result::Ok(http_response.json::<KeyResponse>().await?);
+    let result = http_response.json::<KeyResponse>().await.map_err(|_| ())?;
 
-    return result.map(|res| JwkKeys {
-        keys: res.keys,
-        validity: max_age,
-    });
-}
-
-pub async fn fetch_keys(config: &JwkConfiguration) -> Result<JwkKeys, Box<dyn Error>> {
-    return get_keys(config).await;
+    return Ok((result.keys, max_age));
 }
