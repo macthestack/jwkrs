@@ -4,22 +4,24 @@ use reqwest::header;
 
 /// Method to get max-age from reqwest::Response
 pub fn get_max_age(response: &reqwest::Response) -> Option<Duration> {
-    let max_age = response
-        .headers()
-        .get(header::CACHE_CONTROL)
-        .and_then(|header| header.to_str().ok())
-        .and_then(|header| {
-            header
-                .split(',')
-                .filter_map(|kv| {
-                    let mut split = kv.split('=');
-                    Some((split.next()?, split.next()?))
-                })
-                .filter(|(k, _)| k.trim() == "max-age")
-                .next()
-        })
-        .and_then(|(_, v)| v.parse::<u64>().ok())
-        .map(Duration::from_secs);
+    println!("qqq");
+    let headers = response.headers();
+    let cache_control = headers.get(header::CACHE_CONTROL)?;
+    let cache_control = cache_control.to_str().ok()?;
 
-    max_age
+    let max_age = cache_control
+        .split(',')
+        .filter_map(|kv| {
+            let mut split = kv.split('=');
+            Some((split.next()?, split.next()?))
+        })
+        .filter(|(k, _)| k.trim() == "max-age")
+        .map(|(_, v)| v)
+        .next()?;
+
+    let max_age = max_age.parse::<u64>().ok()?;
+
+    println!("rrr: {}", max_age);
+
+    Some(Duration::from_secs(max_age))
 }
