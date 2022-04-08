@@ -14,7 +14,7 @@ async fn main() {
     let config = JwkConfiguration {
         jwk_url: "{JWK_URL}".to_string(),
         audience: "{AUDIENCE}".to_string(),
-        issuer: "{ISSUER}".to_string(),
+        issuer: HashSet::from(["{ISSUER}".to_string()]),
     };
     let jwk = jwkrs::JwkAuth::new(config);
 
