@@ -1,7 +1,7 @@
 [package]
 name = "jwkrs"
 description = "A JWK library."
-version = "0.1.6"
+version = "0.2.0"
 authors = ["Martin Svensson <martin@appscifi.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -13,7 +13,8 @@ reqwest = { version = "0.11", default-features = false, features = [
     "json",
     "rustls-tls",
 ] }
-jsonwebtoken = "7.2"
+jsonwebtoken = "8"
 tokio = { version = "1" }
 evmap = "10"
 evmap-derive = "0.2"
+tracing = "0.1"

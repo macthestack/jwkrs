@@ -1,11 +1,10 @@
 use crate::config::JwkConfiguration;
-use crate::jwk_auth::JwkKey;
+use crate::validator::Validator;
 use evmap::ReadHandleFactory;
+use jsonwebtoken::decode;
 use jsonwebtoken::decode_header;
 use jsonwebtoken::TokenData;
-use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::Deserialize;
-use std::str::FromStr;
 
 #[derive(Debug, Deserialize)]
 pub struct Claims {
@@ -21,47 +20,44 @@ pub struct Claims {
     pub iat: i64,
 }
 
-enum VerificationError {
+#[derive(Debug)]
+pub enum VerificationError {
+    NoKid,
+    NoKeyPresent,
     InvalidSignature,
-    UnknownKeyAlgorithm,
+    KeyDecodingFailed,
 }
 
 #[derive(Debug)]
 pub struct JwkVerifier<'a> {
-    pub keys: &'a ReadHandleFactory<String, JwkKey>,
+    pub validators: &'a ReadHandleFactory<String, Validator>,
     pub config: &'a JwkConfiguration,
 }
 
 impl<'a> JwkVerifier<'a> {
-    pub fn verify(&self, token: &String) -> Option<TokenData<Claims>> {
-        let key_id = decode_header(token).map(|header| header.kid).ok()??;
+    pub fn verify(&self, token: &String) -> Result<TokenData<Claims>, VerificationError> {
+        let header = decode_header(token).map_err(|_| VerificationError::KeyDecodingFailed)?;
 
-        let key = self.get_key(key_id)?;
+        let key_id = header.kid.ok_or(VerificationError::NoKid)?;
 
-        self.decode_token_with_key(&key, token).ok()
+        let validator = self
+            .get_validator(key_id)
+            .ok_or(VerificationError::NoKeyPresent)?;
+
+        self.decode_token_with_key(&validator, token)
     }
 
-    fn get_key(&self, key_id: String) -> Option<JwkKey> {
-        let key = self.keys.handle();
-        let key = key.get_one(&key_id)?;
-        Some(key.clone())
+    fn get_validator(&self, key_id: String) -> Option<Validator> {
+        let validators = self.validators.handle();
+        let validator = validators.get_one(&key_id)?;
+        Some(validator.clone())
     }
-
     fn decode_token_with_key(
         &self,
-        key: &JwkKey,
+        validator: &Validator,
         token: &String,
     ) -> Result<TokenData<Claims>, VerificationError> {
-        let algorithm = match Algorithm::from_str(&key.alg) {
-            Ok(alg) => alg,
-            Err(_error) => return Err(VerificationError::UnknownKeyAlgorithm),
-        };
-
-        let mut validation = Validation::new(algorithm);
-        validation.set_audience(&[&self.config.audience]);
-        validation.iss = Some(self.config.issuer.clone());
-        let key = DecodingKey::from_rsa_components(&key.n, &key.e);
-        return decode::<Claims>(token, &key, &validation)
+        return decode::<Claims>(token, &validator.key, &validator.validation)
             .map_err(|_| VerificationError::InvalidSignature);
     }
 }
