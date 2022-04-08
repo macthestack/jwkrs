@@ -1,45 +1,42 @@
 use std::str::FromStr;
 
-use jsonwebtoken::{Validation, DecodingKey, Algorithm};
+use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 
 use crate::{config::JwkConfiguration, jwk_auth::JwkKey};
 
 #[derive(Clone)]
-pub struct Validator {
+pub(crate) struct Key {
     pub key_id: String,
     pub key: Box<DecodingKey>,
     pub validation: Box<Validation>,
 }
 
-impl Eq for Validator {
+impl Eq for Key {
     fn assert_receiver_is_total_eq(&self) {
         self.key_id.assert_receiver_is_total_eq();
     }
 }
 
-impl evmap::ShallowCopy for Validator {
+impl evmap::ShallowCopy for Key {
     unsafe fn shallow_copy(&self) -> std::mem::ManuallyDrop<Self> {
         todo!()
     }
 }
 
-impl PartialEq for Validator {
+impl PartialEq for Key {
     fn eq(&self, other: &Self) -> bool {
         self.key_id == other.key_id
     }
 }
 
-impl std::hash::Hash for Validator {
+impl std::hash::Hash for Key {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.key_id.hash(state);
     }
 }
 
-impl Validator {
-    pub fn from_jwk_key(
-        key: &JwkKey,
-        config: &JwkConfiguration,
-    ) -> Result<Validator, ValidatorError> {
+impl Key {
+    pub fn from_jwk_key(key: &JwkKey, config: &JwkConfiguration) -> Result<Key, ValidatorError> {
         let algorithm =
             Algorithm::from_str(&key.alg).map_err(|_| ValidatorError::InvalidAlgorithm)?;
         let mut validation = Validation::new(algorithm);
@@ -49,7 +46,7 @@ impl Validator {
             .map_err(|_| ValidatorError::KeyDecodingFailed)?;
 
         // let decoding_key = decoding_key;
-        let validator = Validator {
+        let validator = Key {
             key_id: key.kid.clone(),
             key: Box::new(decoding_key),
             validation: Box::new(validation),

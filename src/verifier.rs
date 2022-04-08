@@ -1,5 +1,5 @@
 use crate::config::JwkConfiguration;
-use crate::validator::Validator;
+use crate::key::Key;
 use evmap::ReadHandleFactory;
 use jsonwebtoken::decode;
 use jsonwebtoken::decode_header;
@@ -30,7 +30,7 @@ pub enum VerificationError {
 
 #[derive(Debug)]
 pub struct JwkVerifier<'a> {
-    pub validators: &'a ReadHandleFactory<String, Validator>,
+    pub(crate) validators: &'a ReadHandleFactory<String, Key>,
     pub config: &'a JwkConfiguration,
 }
 
@@ -47,14 +47,14 @@ impl<'a> JwkVerifier<'a> {
         self.decode_token_with_key(&validator, token)
     }
 
-    fn get_validator(&self, key_id: String) -> Option<Validator> {
+    fn get_validator(&self, key_id: String) -> Option<Key> {
         let validators = self.validators.handle();
         let validator = validators.get_one(&key_id)?;
         Some(validator.clone())
     }
     fn decode_token_with_key(
         &self,
-        validator: &Validator,
+        validator: &Key,
         token: &String,
     ) -> Result<TokenData<Claims>, VerificationError> {
         return decode::<Claims>(token, &validator.key, &validator.validation)

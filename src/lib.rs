@@ -2,7 +2,7 @@ pub mod config;
 mod fetch_keys;
 mod get_max_age;
 mod jwk_auth;
-mod validator;
+mod key;
 mod verifier;
 
 pub use jwk_auth::JwkAuth;

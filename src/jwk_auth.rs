@@ -1,6 +1,6 @@
 use crate::config::JwkConfiguration;
 use crate::fetch_keys::get_keys;
-use crate::validator::Validator;
+use crate::key::Key;
 use crate::verifier::{Claims, JwkVerifier};
 use evmap::{ReadHandleFactory, WriteHandle};
 use evmap_derive::ShallowCopy;
@@ -12,7 +12,7 @@ use tracing::trace;
 
 #[derive(Clone)]
 pub struct JwkAuth {
-    validators: ReadHandleFactory<String, Validator>,
+    validators: ReadHandleFactory<String, Key>,
     config: JwkConfiguration,
 }
 
@@ -57,7 +57,7 @@ impl JwkAuth {
     }
 }
 
-async fn key_update(config: JwkConfiguration, mut w: WriteHandle<String, Validator>) {
+async fn key_update(config: JwkConfiguration, mut w: WriteHandle<String, Key>) {
     loop {
         let keys = get_keys(&config).await;
         let duration = match keys {
@@ -65,7 +65,7 @@ async fn key_update(config: JwkConfiguration, mut w: WriteHandle<String, Validat
                 w.purge();
 
                 for key in keys {
-                    let validator = Validator::from_jwk_key(&key, &config);
+                    let validator = Key::from_jwk_key(&key, &config);
 
                     match validator {
                         Ok(validator) => {
