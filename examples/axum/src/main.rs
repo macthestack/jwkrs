@@ -4,13 +4,14 @@ use auth::{Authentication, Header};
 use axum::{handler::get, AddExtensionLayer, Router};
 use jwkrs::config::JwkConfiguration;
 use std::net::SocketAddr;
+use std::collections::HashSet;
 
 #[tokio::main]
 async fn main() {
     let config = JwkConfiguration {
         jwk_url: "{JWK_URL}".to_string(),
         audience: "{AUDIENCE}".to_string(),
-        issuer: "{ISSUER}".to_string(),
+        issuers: HashSet::from(["{ISSUER}".to_string()]),
     };
     let jwk = jwkrs::JwkAuth::new(config);
     let app = Router::new()
