@@ -19,7 +19,11 @@ impl Eq for Key {
 
 impl evmap::ShallowCopy for Key {
     unsafe fn shallow_copy(&self) -> std::mem::ManuallyDrop<Self> {
-        todo!()
+        std::mem::ManuallyDrop::new(Key {
+            key_id: self.key_id.clone(),
+            key: self.key.clone(),
+            validation: self.validation.clone(),
+        })
     }
 }
 

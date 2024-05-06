@@ -9,7 +9,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct Claims {
     // The audience the token was issued for
-    pub aud: String,
+    pub aud: Vec<String>,
     // The expiry date -- as epoch seconds
     pub exp: i64,
     // The token issuer
@@ -35,7 +35,7 @@ pub struct JwkVerifier<'a> {
 }
 
 impl<'a> JwkVerifier<'a> {
-    pub fn verify(&self, token: &String) -> Result<TokenData<Claims>, VerificationError> {
+    pub fn verify(&self, token: &str) -> Result<TokenData<Claims>, VerificationError> {
         let header = decode_header(token).map_err(|_| VerificationError::KeyDecodingFailed)?;
 
         let key_id = header.kid.ok_or(VerificationError::NoKid)?;
@@ -55,7 +55,7 @@ impl<'a> JwkVerifier<'a> {
     fn decode_token_with_key(
         &self,
         validator: &Key,
-        token: &String,
+        token: &str,
     ) -> Result<TokenData<Claims>, VerificationError> {
         return decode::<Claims>(token, &validator.key, &validator.validation)
             .map_err(|_| VerificationError::InvalidSignature);

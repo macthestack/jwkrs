@@ -39,7 +39,7 @@ impl JwkAuth {
         instance
     }
 
-    pub async fn verify(self, token: &String) -> Option<TokenData<Claims>> {
+    pub async fn verify(self, token: &str) -> Option<TokenData<Claims>> {
         let verifier = JwkVerifier {
             validators: &self.validators,
             config: &self.config,
