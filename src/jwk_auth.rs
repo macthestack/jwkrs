@@ -8,7 +8,7 @@ use jsonwebtoken::TokenData;
 use serde::Deserialize;
 use std::time::Duration;
 use tokio::time::sleep;
-use tracing::trace;
+use tracing::{debug, error};
 
 #[derive(Clone)]
 pub struct JwkAuth {
@@ -50,7 +50,7 @@ impl JwkAuth {
         match verification_result {
             Ok(token_data) => Some(token_data),
             Err(e) => {
-                trace!("Token verification failed: {:?}", e);
+                debug!("Token verification failed: {:?}", e);
                 None
             }
         }
@@ -72,7 +72,7 @@ async fn key_update(config: JwkConfiguration, mut w: WriteHandle<String, Key>) {
                             w.update(key.kid.clone(), validator);
                         }
                         Err(e) => {
-                            trace!("Failed to create validator: {:?}", e);
+                            error!("Failed to create validator: {:?}", e);
                         }
                     }
                 }
