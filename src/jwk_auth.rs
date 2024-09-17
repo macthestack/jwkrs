@@ -6,6 +6,7 @@ use evmap::{ReadHandleFactory, WriteHandle};
 use evmap_derive::ShallowCopy;
 use jsonwebtoken::TokenData;
 use serde::Deserialize;
+use std::fmt::Debug;
 use std::time::Duration;
 use tokio::time::sleep;
 use tracing::{debug, error};
