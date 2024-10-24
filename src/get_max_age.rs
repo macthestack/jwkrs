@@ -1,24 +1,18 @@
 use std::time::Duration;
 
+use cache_control::CacheControl;
 use reqwest::header;
 
-/// Method to get max-age from reqwest::Response
 pub fn get_max_age(response: &reqwest::Response) -> Option<Duration> {
     let headers = response.headers();
-    let cache_control = headers.get(header::CACHE_CONTROL)?;
-    let cache_control = cache_control.to_str().ok()?;
+    let cache_control_header = headers.get(header::CACHE_CONTROL)?;
+    let cache_control_str = cache_control_header.to_str().ok()?;
 
-    let max_age = cache_control
-        .split(',')
-        .filter_map(|kv| {
-            let mut split = kv.split('=');
-            Some((split.next()?, split.next()?))
-        })
-        .filter(|(k, _)| k.trim() == "max-age")
-        .map(|(_, v)| v)
-        .next()?;
+    let cache_control = CacheControl::from_value(cache_control_str)?;
 
-    let max_age = max_age.parse::<u64>().ok()?;
+    if let Some(max_age) = cache_control.max_age {
+        return Some(Duration::from_secs(max_age.as_secs()));
+    }
 
-    Some(Duration::from_secs(max_age))
+    None
 }

@@ -1,11 +1,12 @@
 use crate::config::JwkConfiguration;
-use crate::fetch_keys::get_keys;
+use crate::fetch_keys::{get_keys, GetKeysError};
 use crate::key::Key;
 use crate::verifier::{Claims, JwkVerifier};
 use evmap::{ReadHandleFactory, WriteHandle};
 use evmap_derive::ShallowCopy;
 use jsonwebtoken::TokenData;
 use serde::Deserialize;
+use std::cmp::min;
 use std::fmt::Debug;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -14,7 +15,6 @@ use tracing::{debug, error};
 #[derive(Clone)]
 pub struct JwkAuth {
     validators: ReadHandleFactory<String, Key>,
-    config: JwkConfiguration,
 }
 
 #[derive(Clone, Default, Debug, Deserialize, Eq, PartialEq, Hash, ShallowCopy)]
@@ -32,7 +32,6 @@ impl JwkAuth {
 
         let instance = JwkAuth {
             validators: r.factory(),
-            config: config.clone(),
         };
 
         tokio::spawn(key_update(config, w));
@@ -40,10 +39,9 @@ impl JwkAuth {
         instance
     }
 
-    pub async fn verify(self, token: &str) -> Option<TokenData<Claims>> {
+    pub async fn verify(&self, token: &str) -> Option<TokenData<Claims>> {
         let verifier = JwkVerifier {
             validators: &self.validators,
-            config: &self.config,
         };
 
         let verification_result = verifier.verify(token);
@@ -59,29 +57,47 @@ impl JwkAuth {
 }
 
 async fn key_update(config: JwkConfiguration, mut w: WriteHandle<String, Key>) {
+    let client = reqwest::Client::new();
+    let mut etag: Option<String> = None;
+    let mut retry_delay = Duration::from_secs(10);
+    const MAX_RETRY_DELAY: Duration = Duration::from_secs(600); // 10 minutes
+    const MIN_REFRESH_DURATION: Duration = Duration::from_secs(300); // 5 minutes
+    const MAX_REFRESH_DURATION: Duration = Duration::from_secs(86400); // 1 day
+
     loop {
-        let keys = get_keys(&config).await;
-        let duration = match keys {
-            Ok((keys, duration)) => {
+        match get_keys(&config, &client, etag.as_deref()).await {
+            Ok((keys, duration, new_etag)) => {
+                retry_delay = Duration::from_secs(10);
+                etag = new_etag;
+
                 w.purge();
-
                 for key in keys {
-                    let validator = Key::from_jwk_key(&key, &config);
-
-                    match validator {
+                    match Key::from_jwk_key(&key, &config) {
                         Ok(validator) => {
                             w.update(key.kid.clone(), validator);
                         }
                         Err(e) => {
-                            error!("Failed to create validator: {:?}", e);
+                            error!("Failed to create validator for key ID {}: {:?}", key.kid, e);
                         }
                     }
                 }
                 w.refresh();
-                duration
+
+                let next_refresh = duration.clamp(MIN_REFRESH_DURATION, MAX_REFRESH_DURATION);
+
+                sleep(next_refresh).await;
             }
-            Err(_) => Duration::from_secs(10),
-        };
-        sleep(duration).await;
+            Err(GetKeysError::NotModified(duration)) => {
+                let next_refresh = duration.clamp(MIN_REFRESH_DURATION, MAX_REFRESH_DURATION);
+                sleep(next_refresh).await;
+            }
+            Err(_) => {
+                error!("Failed to fetch keys");
+
+                sleep(retry_delay).await;
+
+                retry_delay = min(retry_delay * 2, MAX_RETRY_DELAY);
+            }
+        }
     }
 }

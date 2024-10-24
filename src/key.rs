@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 
@@ -7,15 +7,11 @@ use crate::{config::JwkConfiguration, jwk_auth::JwkKey};
 #[derive(Clone)]
 pub(crate) struct Key {
     pub key_id: String,
-    pub key: Box<DecodingKey>,
-    pub validation: Box<Validation>,
+    pub key: Arc<DecodingKey>,
+    pub validation: Arc<Validation>,
 }
 
-impl Eq for Key {
-    fn assert_receiver_is_total_eq(&self) {
-        self.key_id.assert_receiver_is_total_eq();
-    }
-}
+impl Eq for Key {}
 
 impl evmap::ShallowCopy for Key {
     unsafe fn shallow_copy(&self) -> std::mem::ManuallyDrop<Self> {
@@ -49,11 +45,10 @@ impl Key {
         let decoding_key = DecodingKey::from_rsa_components(&key.n, &key.e)
             .map_err(|_| ValidatorError::KeyDecodingFailed)?;
 
-        // let decoding_key = decoding_key;
         let validator = Key {
             key_id: key.kid.clone(),
-            key: Box::new(decoding_key),
-            validation: Box::new(validation),
+            key: Arc::new(decoding_key),
+            validation: Arc::new(validation),
         };
 
         Ok(validator)
