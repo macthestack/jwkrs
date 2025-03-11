@@ -2,8 +2,8 @@ mod auth;
 
 use auth::{Authentication, Header};
 use axum::routing::get;
-use axum::{debug_handler, Extension, Router};
-use jwkrs::config::JwkConfiguration;
+use axum::{Extension, Router, debug_handler};
+use jwkrs::JwkConfiguration;
 use std::collections::HashSet;
 
 #[tokio::main]

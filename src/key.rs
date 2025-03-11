@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::Arc};
 
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 
-use crate::{config::JwkConfiguration, jwk_auth::JwkKey};
+use crate::{JwkConfiguration, jwk_auth::JwkKey};
 
 #[derive(Clone)]
 pub struct Key {

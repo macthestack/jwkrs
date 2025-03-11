@@ -2,9 +2,9 @@ use reqwest::header::{ETAG, IF_NONE_MATCH};
 use serde::Deserialize;
 use std::time::Duration;
 
-use crate::config::JwkConfiguration;
 use crate::get_max_age::get_max_age;
 use crate::jwk_auth::JwkKey;
+use crate::JwkConfiguration;
 
 #[derive(Debug, Deserialize)]
 struct KeyResponse {
@@ -35,7 +35,6 @@ pub async fn get_keys(
 
     match http_response.status() {
         reqwest::StatusCode::NOT_MODIFIED => {
-            // Extract duration from headers
             let duration = get_max_age(&http_response).unwrap_or(FALLBACK_TIMEOUT);
             Err(GetKeysError::NotModified(duration))
         }
