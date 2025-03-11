@@ -5,12 +5,6 @@ mod jwk_auth;
 mod key;
 mod verifier;
 
-pub use jwk_auth::JwkAuth;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+pub use config::JwkConfiguration;
+pub use jwk_auth::{JwkAuth, JwkKey};
+pub use verifier::{Audience, Claims, VerificationError};

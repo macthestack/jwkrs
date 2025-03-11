@@ -5,7 +5,7 @@ use crate::verifier::{Claims, JwkVerifier};
 use evmap::{ReadHandleFactory, WriteHandle};
 use evmap_derive::ShallowCopy;
 use jsonwebtoken::TokenData;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::cmp::min;
 use std::fmt::Debug;
 use std::time::Duration;
@@ -14,10 +14,10 @@ use tracing::{debug, error};
 
 #[derive(Clone)]
 pub struct JwkAuth {
-    validators: ReadHandleFactory<String, Key>,
+    pub validators: ReadHandleFactory<String, Key>,
 }
 
-#[derive(Clone, Default, Debug, Deserialize, Eq, PartialEq, Hash, ShallowCopy)]
+#[derive(Clone, Default, Debug, Deserialize, Serialize, Eq, PartialEq, Hash, ShallowCopy)]
 pub struct JwkKey {
     pub e: String,
     pub alg: String,

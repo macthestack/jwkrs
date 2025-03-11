@@ -5,7 +5,7 @@ use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use crate::{config::JwkConfiguration, jwk_auth::JwkKey};
 
 #[derive(Clone)]
-pub(crate) struct Key {
+pub struct Key {
     pub key_id: String,
     pub key: Arc<DecodingKey>,
     pub validation: Arc<Validation>,

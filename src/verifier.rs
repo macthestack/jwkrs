@@ -4,9 +4,10 @@ use jsonwebtoken::decode;
 use jsonwebtoken::decode_header;
 use jsonwebtoken::TokenData;
 use serde::Deserialize;
+use serde::Serialize;
 use tracing::trace;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub aud: Audience,
     pub exp: i64,
@@ -15,7 +16,7 @@ pub struct Claims {
     pub iat: i64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Audience {
     Single(String),
