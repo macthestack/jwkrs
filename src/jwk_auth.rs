@@ -1,7 +1,7 @@
-use crate::config::JwkConfiguration;
 use crate::fetch_keys::{get_keys, GetKeysError};
 use crate::key::Key;
 use crate::verifier::{Claims, JwkVerifier};
+use crate::JwkConfiguration;
 use evmap::{ReadHandleFactory, WriteHandle};
 use evmap_derive::ShallowCopy;
 use jsonwebtoken::TokenData;
@@ -10,7 +10,7 @@ use std::cmp::min;
 use std::fmt::Debug;
 use std::time::Duration;
 use tokio::time::sleep;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 #[derive(Clone)]
 pub struct JwkAuth {
@@ -85,6 +85,7 @@ async fn key_update(config: JwkConfiguration, mut w: WriteHandle<String, Key>) {
 
                 let next_refresh = duration.clamp(MIN_REFRESH_DURATION, MAX_REFRESH_DURATION);
 
+                debug!("Next key refresh in {:?}", next_refresh);
                 sleep(next_refresh).await;
             }
             Err(GetKeysError::NotModified(duration)) => {
@@ -94,6 +95,7 @@ async fn key_update(config: JwkConfiguration, mut w: WriteHandle<String, Key>) {
             Err(_) => {
                 error!("Failed to fetch keys");
 
+                info!("Retrying in {:?}", retry_delay);
                 sleep(retry_delay).await;
 
                 retry_delay = min(retry_delay * 2, MAX_RETRY_DELAY);

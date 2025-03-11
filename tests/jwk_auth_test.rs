@@ -9,6 +9,7 @@ use rsa::{BigUint, RsaPrivateKey, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::iter::FromIterator;
+use tracing_subscriber::EnvFilter;
 use wiremock::matchers::method;
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -37,6 +38,11 @@ fn public_key_to_jwk(public_key: &RsaPublicKey, kid: String) -> JwkKey {
 
 #[tokio::test]
 async fn test_jwk_auth_end_to_end() {
+    let subscriber = tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("Setting default subscriber failed");
+
     let mut rng = OsRng;
     let bits = 2048;
     let private_key = RsaPrivateKey::new(&mut rng, bits).expect("Failed to generate private key");
@@ -51,7 +57,7 @@ async fn test_jwk_auth_end_to_end() {
         .respond_with(
             ResponseTemplate::new(200)
                 .set_body_string(jwk_set)
-                .insert_header("Cache-Control", "max-age=3600")
+                .insert_header("Cache-Control", "max-age=5400")
                 .insert_header("ETag", "v1"),
         )
         .mount(&mock_server)
